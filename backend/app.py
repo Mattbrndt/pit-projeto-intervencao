@@ -31,6 +31,11 @@ SECOES = [
 
 SITUACOES = ["1", "2", "3"]
 
+# Limites de tamanho: protegem o servico contra payload abusivo.
+LIMITE_CORPO = 256 * 1024          # bytes aceitos no POST
+LIMITE_CAMPO = 5000                # caracteres por secao
+LIMITE_NOME = 120
+
 
 def validar(payload):
     erros = []
@@ -40,12 +45,18 @@ def validar(payload):
 
     if not nome:
         erros.append("nome e obrigatorio")
+    elif len(nome) > LIMITE_NOME:
+        erros.append("nome deve ter no maximo %d caracteres" % LIMITE_NOME)
     if not re.fullmatch(r"\d{6,12}", rgm):
         erros.append("rgm deve ter de 6 a 12 digitos")
     if situacao not in SITUACOES:
         erros.append("situacao deve ser 1, 2 ou 3")
-    if not (payload.get("situacao_texto") or "").strip():
+
+    texto_situacao = (payload.get("situacao_texto") or "").strip()
+    if not texto_situacao:
         erros.append("situacao_texto e obrigatorio")
+    elif len(texto_situacao) > LIMITE_CAMPO:
+        erros.append("situacao_texto deve ter no maximo %d caracteres" % LIMITE_CAMPO)
 
     for campo, rotulo in SECOES:
         texto = (payload.get(campo) or "").strip()
@@ -53,6 +64,8 @@ def validar(payload):
             erros.append("%s e obrigatorio" % rotulo)
         elif len(texto) < 20:
             erros.append("%s precisa de pelo menos 20 caracteres" % rotulo)
+        elif len(texto) > LIMITE_CAMPO:
+            erros.append("%s deve ter no maximo %d caracteres" % (rotulo, LIMITE_CAMPO))
     return erros
 
 
@@ -147,12 +160,20 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, reg)
         return self._json(404, {"erro": "rota inexistente"})
 
+    def do_DELETE(self):
+        self._json(405, {"erro": "metodo nao permitido"})
+
+    def do_PUT(self):
+        self._json(405, {"erro": "metodo nao permitido"})
+
     def do_POST(self):
         caminho = urlparse(self.path).path.rstrip("/")
         if caminho != "/api/projetos":
             return self._json(404, {"erro": "rota inexistente"})
         tamanho = int(self.headers.get("Content-Length") or 0)
-        bruto = self.rfile.read(tamanho).decode("utf-8") or "{}"
+        if tamanho > LIMITE_CORPO:
+            return self._json(413, {"erro": "corpo maior que o limite permitido"})
+        bruto = self.rfile.read(tamanho).decode("utf-8", "replace") or "{}"
         try:
             payload = json.loads(bruto)
         except ValueError:

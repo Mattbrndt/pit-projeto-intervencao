@@ -4,6 +4,10 @@ require __DIR__ . '/config.php';
 $id = preg_replace('/[^a-f0-9]/', '', $_GET['id'] ?? '');
 $resp = $id ? api_call('GET', '/api/projetos/' . $id) : ['status' => 400, 'body' => null, 'erro' => 'id ausente'];
 $reg = ($resp['status'] === 200) ? $resp['body'] : null;
+if (!$reg) {
+    // id invalido ou inexistente nao pode responder 200: devolve o status correto.
+    http_response_code($resp['status'] === 400 ? 400 : 404);
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
