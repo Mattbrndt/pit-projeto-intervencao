@@ -47,7 +47,16 @@ textarea { resize: vertical; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: #4c8dff; }
 
 .linha { display: flex; gap: 12px; flex-wrap: wrap; }
-.linha label { flex: 1 1 180px; }
+.linha label { flex: 1 1 180px; min-width: 0; }
+
+/* Telas estreitas: empilha os campos e reduz o respiro lateral,
+   senao os inputs da linha Nome/RGM/Situacao estouram a viewport. */
+@media (max-width: 640px) {
+  main { padding: 14px; }
+  .card { padding: 16px; }
+  .linha { display: block; }
+  .linha label { width: 100%; }
+}
 
 button, .botao {
   display: inline-block;
